@@ -250,3 +250,8 @@ RRC Connected
 PDU Session Establishment successful. IP: 10.45.1.2
 RRC NR reconfiguration successful.
 ```
+### xAPP
+From the dir ``./oran-sc-ric``, is possible to run xApps contained in the folder ``./oran-sc-ric/xApps``, the following command execute them:
+```bash 
+docker compose exec python_xapp_runner ./oranor_xapp.py --flags
+```
