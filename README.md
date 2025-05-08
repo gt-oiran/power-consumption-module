@@ -1,9 +1,15 @@
 # ORANOR-ENV
+This README provides a tutorial on how to deploy a gNB-focused environment and xApps using srsRAN. It also outlines the necessary steps to extend the set of metrics collected via E2SM-KPM.
 
-In this tutorial, 
+This tutorial is based on the following architecture:
+![Env-Architecture](./Images/architecture.png)
+server-1 Ip: 192.168.0.11 
+
+server-2 Ip: 192.168.0.10 
+
 
 ## Build tools and dependencies
-The user must install necessary dependencies:
+Before getting started, install the required system dependencies:
 ```bash
 sudo apt-get install cmake make gcc g++ pkg-config libfftw3-dev libmbedtls-dev libsctp-dev libyaml-cpp-dev libgtest-dev build-essential libboost-program-options-dev libconfig++-dev libsctp-dev
 ```
@@ -30,9 +36,9 @@ sudo make install
 sudo ldconfig
 ```
 ## Instalation
-In this section, we provide a instalation tutorial of the required softwares.
+This section provides a step-by-step guide to installing all the necessary software components required to set up the environment.
 ### srsRAN Project
-First, the user needs to clone srsRAN Project from source:
+First, the user needs to clone srsRAN Project from source on both server-1 and server-2:
 ```bash
 git clone https://github.com/srsran/srsRAN_Project.git
 cd srsRAN_Project
@@ -53,7 +59,7 @@ Pay extra attention to the cmake console output. Make sure you read the followin
   ...
 ```
 ### srsRAN UE
-To utilize srsRAN UE, firs we need to download and build srsRAN 4G project:
+To utilize srsRAN UE, firs we need to download and build srsRAN 4G project on server-1:
 ```bash
 git clone https://github.com/srsRAN/srsRAN_4G.git
 cd srsRAN_4G
@@ -64,17 +70,17 @@ make
 make test
 ```
 ### ORAN-SC-RIC
-In this tutorial, we use a modified version of the ORAN-SC-RIC provided by srsRAN (``i-release``), to facilitate deployment and replicability.
+In this tutorial, we use a modified version of the ORAN-SC RIC based on the i-release provided by srsRAN, to simplify deployment and ensure replicability.
 
-Download the repository:
+Download the repository on server-1:
 ```bash
 git clone https://github.com/srsran/oran-sc-ric
 ```
 
 ## Configuration
-After successfully cloning and installing srsRAN projects and its releases, we must create a way of communication between its components.
+After successfully cloning and installing the srsRAN projects and their respective releases, the next step is to configure communication between the various components.
 
-Fist step is to configure ``gnb_zmq.yaml``  and ``ue_zmq.conf``.
+Fist step is to configure ``gnb_zmq.yaml`` on server-2  and ``ue_zmq.conf`` on server-1.
 
 ### gNB
 On gNB the user must add to ``bind_addr``, the desired ip:
@@ -109,7 +115,7 @@ ru_sdr:
   rx_gain: 75                       # Receive gain of the RF might need to adjusted to the given situation.
 ...
 ```
-Also, a direct route between gNB server-2 and Core server-1, needs to be configured in server-2 as:
+Also, a direct route between gNB server-2 and Core (on server-1), needs to be configured in server-2 as:
 ```bash
 sudo ip route add 10.53.1.0/24 via 192.168.0.11
 ```
@@ -217,7 +223,7 @@ open5gs_5gc  | 05/05 04:49:40.532: [amf] INFO: [Added] Number of gNBs is now 1 (
 open5gs_5gc  | 05/05 04:49:40.532: [amf] INFO: gNB-N2[192.168.0.10] max_num_of_ostreams : 30 (../src/amf/amf-sm.c:780)
 ```
 ### UE
-Before running srsRAN_4g project, we need to create network namespace for the ue, the name should be the same as specified in ``[gw]`` field from ``gnb_zmq.conf``
+Before running srsRAN_4g project, we need to create network namespace for the ue on server-1, the name should be the same as specified in ``[gw]`` field from ``gnb_zmq.conf``
 ```bash
 sudo ip netns add ue1
 ```
@@ -255,3 +261,58 @@ From the dir ``./oran-sc-ric``, is possible to run xApps contained in the folder
 ```bash 
 docker compose exec python_xapp_runner ./oranor_xapp.py --flags
 ```
+## New metrics for srsRAN
+New metrics implementation includes:
+- uplink SNR on PUSCH (dB) - ``SNR``
+- Physical Cell Id - ``PCI``
+- Modulation and coding scheme (Uplink and Donwlink, kbps) - ``McsUl`` ``McsDl``
+- Bitrate per Direction (Uplink and Donwlink, kbps) - ``BrateUl``, ``BrateDl``
+- Number of successful and failed transport blocks (Uplink and Donwlink) - ``NofOKUl``,``NofOKDl``,``NofNOKUl``,``NofNOKDl``
+- Buffer Status Report - ``BSR``
+- Downlink buffer size - ``BSDl``
+- Timing Advance (nanoseconds) - ``TA``
+- Power Headroom Report (dB) -  ``PHR``
+- Rank Indicator - ``RI``
+
+### Implementation:
+To utilize the new metrics in the srsRAN framework, the following modifications to the E2SM-KPM (E2 Service Management for Key Performance Metrics) functions are necessary. Specifically, we will modify the getter functions located in the ./srsRAN_Project/lib/e2/e2sm/e2sm_kpm directory.
+
+Example: SNR Metric
+
+1 - First, we add the method responsible to colect the SNR metric in  ``e2sm_kpm_du_meas_provider_impl.h``:
+
+```c++
+metric_meas_getter_func_t get_pusch_snr;
+```
+2 - In the ``e2sm_kpm_du_meas_provider_impl.cpp`` file, add the SNR metric to the supported_metrics array. This will associate the metric name (SNR) with the relevant getter function and other necessary details, such as supported labels and levels, and whether cell-scoping is supported:
+
+```c++
+supported_metrics.emplace(
+      "SNR", e2sm_kpm_supported_metric_t{supported_labels, supported_levels, cell_scope_supported, &e2sm_kpm_du_meas_provider_impl::get_pusch_snr});
+```
+And also, implement the function that collects the SNR metric. This function is responsible for extracting the metric value and storing it in the items vector:
+
+```c++
+bool e2sm_kpm_du_meas_provider_impl::get_pusch_snr(const asn1::e2sm::label_info_list_l          label_info_list,
+                                            const std::vector<asn1::e2sm::ue_id_c>&      ues,
+                                            const std::optional<asn1::e2sm::cgi_c>       cell_global_id,
+                                            std::vector<asn1::e2sm::meas_record_item_c>& items)
+{
+  bool                 meas_collected = false;
+  scheduler_ue_metrics ue_metrics     = last_ue_metrics[0];
+
+  meas_record_item_c meas_record_item;
+  meas_record_item.set_integer() = (int)ue_metrics.pusch_snr_db;  // logic of collection
+  items.push_back(meas_record_item);
+  meas_collected = true;
+
+  return meas_collected;
+}
+```
+This function collects the SNR value from the scheduler_ue_metrics structure (specifically, the pusch_snr_db field), converts it to an integer, and stores it in the items vector for further processing.
+
+
+4 - If needed, you can further customize the logic for collecting other metrics or adjust existing ones based on the requirements. The relevant scheduling metrics can be found in the ``./srsRAN_Project/include/srsran/scheduler/scheduler_metrics.h`` file. You can modify these collection methods to match the specific needs of your application.
+
+
+
