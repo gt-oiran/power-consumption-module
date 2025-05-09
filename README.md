@@ -38,10 +38,10 @@ sudo ldconfig
 ## Instalation
 This section provides a step-by-step guide to installing all the necessary software components required to set up the environment.
 ### srsRAN Project
-First, the user needs to clone srsRAN Project from source on both server-1 and server-2:
+First, clone our extended srsRAN Project repository on both server-1 and server-2:
 ```bash
-git clone https://github.com/srsran/srsRAN_Project.git
-cd srsRAN_Project
+git clone [https://github.com/srsran/srsRAN_Project.git](https://github.com/gt-oiran/srsran)
+cd srsran
 mkdir build
 cd build
 cmake ../ -DENABLE_EXPORT=ON -DENABLE_ZEROMQ=ON
