@@ -1,8 +1,8 @@
-# ORANOR-ENV
+# Power-consumption-module
 This README provides a tutorial on how to deploy a gNB-focused environment and xApps using srsRAN. It also outlines the necessary steps to extend the set of metrics collected via E2SM-KPM.
 
 This tutorial is based on the following architecture:
-![Env-Architecture](https://github.com/gt-oiran/power-consumption-module/tree/main/Images/architecture.png)
+![Env-Architecture](https://github.com/gt-oiran/power-consumption-module/blob/main/Images/architecture.png)
 server-1 Ip: 192.168.0.11 
 
 server-2 Ip: 192.168.0.10 
