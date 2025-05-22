@@ -3,10 +3,9 @@ This README provides a tutorial on how to deploy a gNB-focused environment and x
 
 This tutorial is based on the following architecture:
 ![Env-Architecture](https://github.com/gt-oiran/power-consumption-module/blob/main/Images/architecture.png)
-server-1 Ip: 192.168.0.11 
 
-server-2 Ip: 192.168.0.10 
-
+> [!WARNING]  
+> This repository includes only the modified files necessary to run this environment. You will need to integrate them with the full srsRAN and O-RAN software stack as described in the tutorial.
 
 ## Build tools and dependencies
 Before getting started, install the required system dependencies:
@@ -259,8 +258,16 @@ RRC NR reconfiguration successful.
 ### xAPP
 From the dir ``./oran-sc-ric``, is possible to run xApps contained in the folder ``./oran-sc-ric/xApps``, the following command execute them:
 ```bash 
-docker compose exec python_xapp_runner ./oranor_xapp.py --flags
+docker compose exec python_xapp_runner ./oranor_xapp.py --<flag>
 ```
+Some flags examples:
+
+- ``--metrics`` : Name the metrics for collection. Comma separated strings for various metrics.
+
+- ``--buffer`` : Defines the buffer size in seconds
+
+- ``--model`` : Select the model from ./oran-sc-ric/xApps/python/models
+
 ## New metrics for srsRAN
 New metrics implementation includes:
 - uplink SNR on PUSCH (dB) - ``SNR``
